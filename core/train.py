@@ -1,5 +1,6 @@
 import torch
 from tools import MultiItemAverageMeter
+from network.processing import FeatureShuffling
 
 def train_stage1(base, num_image, i_ter, batch, visible_labels_list, visible_image_features_list,
                   infrared_labels_list, infrared_image_features_list):
@@ -52,7 +53,7 @@ def train_stage2(base, num_image, i_ter, batch, labels_list, image_features_list
 
     return meter.get_val(), meter.get_str()
 
-def train(base, loaders, text_features, config):
+def train(base, loaders, text_features, config, current_epoch):
 
     base.set_train()
     meter = MultiItemAverageMeter()
@@ -70,8 +71,11 @@ def train(base, loaders, text_features, config):
         features, cls_score = base.model(x1=rgb_imgs, x2=ir_imgs)
 
         n = features[1].shape[0] // 3
+        rgb_features = features[0].squeeze().narrow(0, 0, n)#32.2048
+        ir_features = features[0].squeeze().narrow(0, 2 * n, n)#32,2048
         rgb_attn_features = features[1].narrow(0, 0, n)
         ir_attn_features = features[1].narrow(0, 2 * n, n)
+
         rgb_logits = rgb_attn_features @ text_features.t()
         ir_logits = ir_attn_features @ text_features.t()
 
@@ -79,12 +83,17 @@ def train(base, loaders, text_features, config):
         ide_loss_proj = base.pid_creiteron(cls_score[1], pids)
         triplet_loss = base.tri_creiteron(features[0].squeeze(), pids)
         triplet_loss_proj = base.tri_creiteron(features[1].squeeze(), pids)
+        msel_loss = base.msel_creiteron(torch.cat([rgb_features, ir_features], dim=0), torch.cat([rgb_pids, ir_pids], dim=0))
+        msel_loss_proj = base.msel_creiteron(torch.cat([rgb_attn_features, ir_attn_features], dim=0),
+                                        torch.cat([rgb_pids, ir_pids], dim=0))
 
         rgb_i2t_ide_loss = base.pid_creiteron(rgb_logits, rgb_pids)
         ir_i2t_ide_loss = base.pid_creiteron(ir_logits, ir_pids)
 
-        loss = ide_loss + ide_loss_proj + config.lambda1 * (triplet_loss + triplet_loss_proj) + \
+        loss = ide_loss + ide_loss_proj + (msel_loss + msel_loss_proj) + \
+               config.lambda1 * (triplet_loss + triplet_loss_proj) + \
                config.lambda2 * rgb_i2t_ide_loss + config.lambda3 * ir_i2t_ide_loss
+
         base.model_optimizer_stage3.zero_grad()
         loss.backward()
         base.model_optimizer_stage3.step()
@@ -94,6 +103,8 @@ def train(base, loaders, text_features, config):
                       'triplet_loss_proj': triplet_loss_proj.data,
                       'rgb_i2t_pid_loss': rgb_i2t_ide_loss.data,
                       'ir_i2t_pid_loss': ir_i2t_ide_loss.data,
+                      'msel_loss': msel_loss.data,
+                      'msel_loss_proj': msel_loss_proj.data,
                       })
     return meter.get_val(), meter.get_str()
 

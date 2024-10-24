@@ -10,12 +10,15 @@ def test(base, loader, config):
     base.set_eval()
     print('Extracting Query Feature...')
     ptr = 0
-    query_feat = np.zeros((loader.n_query, 3072))
+    query_feat = np.zeros((loader.n_query, 6144))
     with torch.no_grad():
         for batch_idx, (input, label) in enumerate(loader.query_loader):
             batch_num = input.size(0)
             input = Variable(input.cuda())
+            flip_input = torch.flip(input, [3]).cuda()
             feat = base.model(x2=input)
+            flip_feat = base.model(x2=flip_input)
+            feat = torch.cat([feat, flip_feat], dim=1)
             query_feat[ptr:ptr + batch_num, :] = feat.detach().cpu().numpy()
             ptr = ptr + batch_num
 
@@ -28,12 +31,15 @@ def test(base, loader, config):
         for i in range(10):
             ptr = 0
             gall_loader = loader.gallery_loaders[i]
-            gall_feat = np.zeros((loader.n_gallery, 3072))
+            gall_feat = np.zeros((loader.n_gallery, 6144))
             with torch.no_grad():
                 for batch_idx, (input, label) in enumerate(gall_loader):
                     batch_num = input.size(0)
                     input = Variable(input.cuda())
+                    flip_input = torch.flip(input, [3]).cuda()
                     feat = base.model(x1=input)
+                    flip_feat = base.model(x1=flip_input)
+                    feat = torch.cat([feat, flip_feat], dim=1)
                     gall_feat[ptr:ptr + batch_num, :] = feat.detach().cpu().numpy()
                     ptr = ptr + batch_num
             distmat = np.matmul(query_feat, np.transpose(gall_feat))
@@ -48,13 +54,16 @@ def test(base, loader, config):
 
     elif loader.dataset == 'regdb':
         gall_loader = loader.gallery_loaders
-        gall_feat = np.zeros((loader.n_gallery, 3072))
+        gall_feat = np.zeros((loader.n_gallery, 6144))
         ptr = 0
         with torch.no_grad():
             for batch_idx, (input, label) in enumerate(gall_loader):
                 batch_num = input.size(0)
                 input = Variable(input.cuda())
+                flip_input = torch.flip(input, [3]).cuda()
                 feat = base.model(x1=input)
+                flip_feat = base.model(x1=flip_input)
+                feat = torch.cat([feat, flip_feat], dim=1)
                 gall_feat[ptr:ptr + batch_num, :] = feat.detach().cpu().numpy()
 
                 ptr = ptr + batch_num

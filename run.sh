@@ -1,1 +1,1 @@
-python3 main.py --output_path sysu/base
+CUDA_VISIBLE_DEVICES=0 python3 main.py --output_path sysu/base

@@ -165,7 +165,7 @@ def main(config):
         for current_epoch in range(start_train_epoch, config.total_train_epoch):
             model.model_lr_scheduler_stage3.step(current_epoch)
 
-            _, result = train(model, loaders, text_features, config)
+            _, result = train(model, loaders, text_features, config, current_epoch)
             logger('Time: {}; Epoch: {}; LR, {}; {}'.format(time_now(), current_epoch,
                                                             model.model_lr_scheduler_stage3.get_lr()[0], result))
 
@@ -194,8 +194,8 @@ if __name__ == '__main__':
     parser.add_argument('--gall_mode', default='single', type=str, help='single or multi')
     parser.add_argument('--regdb_test_mode', default='v-t', type=str, help='')
     parser.add_argument('--dataset', default='sysu', help='dataset name: regdb or sysu]')
-    parser.add_argument('--sysu_data_path', type=str, default='/opt/data/private/data/SYSU-MM01/')
-    parser.add_argument('--regdb_data_path', type=str, default='/opt/data/private/data/RegDB/')
+    parser.add_argument('--sysu_data_path', type=str, default='/ssd/s01015/data/SYSU-MM01/')
+    parser.add_argument('--regdb_data_path', type=str, default='/ssd/s01015/data/RegDB/')
     parser.add_argument('--trial', default=1, type=int, help='trial (only for RegDB dataset)')
     parser.add_argument('--batch-size', default=32, type=int, metavar='B', help='training batch size')
     parser.add_argument('--img_w', default=144, type=int, metavar='imgw', help='img width')
@@ -219,6 +219,9 @@ if __name__ == '__main__':
     parser.add_argument('--lambda1', type=float, default=0.15)
     parser.add_argument('--lambda2', type=float, default=0.05)
     parser.add_argument('--lambda3', type=float, default=0.1)
+
+    parser.add_argument('--loss', default=1, type=int,
+                        help='num of pos per identity in each modality')
 
     parser.add_argument('--num_pos', default=4, type=int,
                         help='num of pos per identity in each modality')

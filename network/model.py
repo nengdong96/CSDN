@@ -54,8 +54,7 @@ class Classifier(nn.Module):
 
     def forward(self, features_map):
         features = self.GEM(features_map)
-        #bn_features = self.BN(features.squeeze())
-        bn_features = self.BN(features.squeeze().unsqueeze(0))
+        bn_features = self.BN(features.squeeze())
         cls_score = self.classifier(bn_features)
         return features, cls_score, self.l2_norm(bn_features)
 
@@ -72,8 +71,7 @@ class Classifier2(nn.Module):
         self.l2_norm = Normalize(2)
 
     def forward(self, features):
-        #bn_features = self.BN(features.squeeze())
-        bn_features = self.BN(features.squeeze().unsqueeze(0))
+        bn_features = self.BN(features.squeeze())
         cls_score = self.classifier(bn_features)
         return cls_score, self.l2_norm(features)
 
@@ -281,52 +279,25 @@ class Model(nn.Module):
 
             return [features, image_features_proj], [cls_scores, cls_scores_proj]
 
-
         elif x1 is not None and x2 is None:
 
             image_features_map1 = self.image_encoder1(x1)
-
             image_features_map1 = self.image_encoder(image_features_map1)
+            image_features1_proj = self.attnpool(image_features_map1)[0]
+            _, _, test_features1 = self.classifier(image_features_map1)
+            _, test_features1_proj = self.classifier2(image_features1_proj)
 
-            # image_features1_proj = self.attnpool(image_features_map1)[0]
-
-            image_features1_proj = self.attnpool(image_features_map1)
-
-            # _, _, test_features1 = self.classifier(image_features_map1)
-
-            _, pred, _ = self.classifier(image_features_map1)
-
-            # _, test_features1_proj = self.classifier2(image_features1_proj)
-
-            pred_proj, _ = self.classifier2(image_features1_proj[0])
-
-            # return torch.cat([test_features1, test_features1_proj], dim=1)
-
-            return image_features_map1, image_features1_proj, pred, pred_proj
-
-
+            return torch.cat([test_features1, test_features1_proj], dim=1)
 
         elif x1 is None and x2 is not None:
 
             image_features_map2 = self.image_encoder2(x2)
-
             image_features_map2 = self.image_encoder(image_features_map2)
+            image_features2_proj = self.attnpool(image_features_map2)[0]
+            _, _, test_features2 = self.classifier(image_features_map2)
+            _, test_features2_proj = self.classifier2(image_features2_proj)
 
-            # image_features2_proj = self.attnpool(image_features_map2)[0]
-
-            image_features2_proj = self.attnpool(image_features_map2)
-
-            # _, _, test_features2 = self.classifier(image_features_map2)
-
-            _, pred, _ = self.classifier(image_features_map2)
-
-            # _, test_features2_proj = self.classifier2(image_features2_proj)
-
-            pred_proj, _ = self.classifier2(image_features2_proj[0])
-
-            return image_features_map2, image_features2_proj, pred, pred_proj
-
-            # return torch.cat([test_features2, test_features2_proj], dim=1)
+            return torch.cat([test_features2, test_features2_proj], dim=1)
 
 from .clip import clip
 def load_clip_to_cpu(backbone_name, h_resolution, w_resolution, vision_stride_size):
